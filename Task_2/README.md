@@ -10,7 +10,7 @@
   
   ## Network structure
   General workflow is as follows:
-  ![Structure](https://github.com/maximus7022/DevOps-onboarding-tasks/tree/master/Task_2/screenshots/struct.png)
+  ![Structure](https://github.com/maximus7022/DevOps-onboarding-tasks/tree/master/Task_2/screenshots/struct.png?raw=true)
 
   So, we need to ensure access from the host network (***192.168.0.0/24***) to Apache Web Server hosted on the VM2 (***10.10.10.2:80***) in internal network through redirection from VM1 (***10.10.10.1:81***), which will act like router and default gateway.
 
@@ -19,13 +19,13 @@
 
   #### Here's VirtualBox network adapter settings for VM1:
   
-  ![VM1 network](https://github.com/maximus7022/DevOps-onboarding-tasks/tree/master/Task_2/screenshots/vm1_net1.png)
+  ![VM1 network](https://github.com/maximus7022/DevOps-onboarding-tasks/tree/master/Task_2/screenshots/vm1_net1.png?raw=true)
   
-  ![VM1 network](https://github.com/maximus7022/DevOps-onboarding-tasks/tree/master/Task_2/screenshots/vm1_net2.png)
+  ![VM1 network](https://github.com/maximus7022/DevOps-onboarding-tasks/tree/master/Task_2/screenshots/vm1_net2.png?raw=true)
   
   #### And for VM2:
   
-  ![VM2 network](https://github.com/maximus7022/DevOps-onboarding-tasks/tree/master/Task_2/screenshots/vm2_net.png)
+  ![VM2 network](https://github.com/maximus7022/DevOps-onboarding-tasks/tree/master/Task_2/screenshots/vm2_net.png?raw=true)
 
   **!** you will need to temporary enable bridged adapter in VM2 to be able to update packages and install httpd.
 
@@ -39,11 +39,11 @@
 
   For VM1:
   
-  ![VM1 ifcfg](https://github.com/maximus7022/DevOps-onboarding-tasks/tree/master/Task_2/screenshots/vm1_ifcfg.png)
+  ![VM1 ifcfg](https://github.com/maximus7022/DevOps-onboarding-tasks/tree/master/Task_2/screenshots/vm1_ifcfg.png?raw=true)
 
   For VM2:
   
-  ![VM2 ifcfg](https://github.com/maximus7022/DevOps-onboarding-tasks/tree/master/Task_2/screenshots/vm2_ifcfg.png)
+  ![VM2 ifcfg](https://github.com/maximus7022/DevOps-onboarding-tasks/tree/master/Task_2/screenshots/vm2_ifcfg.png?raw=true)
 
   After that restart configured interfaces by:
 
@@ -110,4 +110,4 @@ The last step is to execute this script:
 
 #### After that we can get access to internal web-server from our host machine by entering VM1 host IP address (192.168.0.111 in my case) and specifying port 81:
 
-![result](https://github.com/maximus7022/DevOps-onboarding-tasks/tree/master/Task_2/screenshots/result.png)
+![result](https://github.com/maximus7022/DevOps-onboarding-tasks/tree/master/Task_2/screenshots/result.png?raw=true)

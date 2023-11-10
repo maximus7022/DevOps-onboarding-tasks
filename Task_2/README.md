@@ -10,6 +10,7 @@
   
   ## Network structure
   General workflow is as follows:
+  
   ![Structure](./screenshots/struct.png)
 
   So, we need to ensure access from the host network (***192.168.0.0/24***) to Apache Web Server hosted on the VM2 (***10.10.10.2:80***) in internal network through redirection from VM1 (***10.10.10.1:81***), which will act like router and default gateway.

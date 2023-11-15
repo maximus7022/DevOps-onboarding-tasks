@@ -58,16 +58,16 @@ The `playbook.yml` file uses dedicated role with all tasks to deploy Wordpress:
 **`ansiblewordpress`** role contains some files with task definitions for different components of the Wordpress installation.
 
 **`templates`** folder:
-- [`wp-config.php.j2`](./ansible/roles/templates/wp-config.php.j2) - contains predefined wordpress configuration template.
+- [`wp-config.php.j2`](./ansible/roles/ansiblewordpress/templates/wp-config.php.j2) - contains predefined wordpress configuration template.
 
 **`tasks`** folder:
-- [`main.yml`](./ansible/roles/tasks/main.yml) - responsible for installation of basic dependencies (epel-release, php, etc.) and executing tasks, contained in other files.
-- [`database.yml`](./ansible/roles/tasks/database.yml) - installs and configures database engine for Wordpress to use.
-- [`webserver.yml`](./ansible/roles/tasks/webserver.yml) - installs apache server and running it.
-- [`wordpress.yml`](./ansible/roles/tasks/wordpress.yml) - initiates wordpress download and applying predefined configuration stored in `wp-config.php.j2` template.
+- [`main.yml`](./ansible/roles/ansiblewordpress/tasks/main.yml) - responsible for installation of basic dependencies (epel-release, php, etc.) and executing tasks, contained in other files.
+- [`database.yml`](./ansible/roles/ansiblewordpress/tasks/database.yml) - installs and configures database engine for Wordpress to use.
+- [`webserver.yml`](./ansible/roles/ansiblewordpress/tasks/webserver.yml) - installs apache server and running it.
+- [`wordpress.yml`](./ansible/roles/ansiblewordpress/tasks/wordpress.yml) - initiates wordpress download and applying predefined configuration stored in `wp-config.php.j2` template.
 
 **`vars`** folder:
-- [`main.yml`](./ansible/roles/vars/main.yml) - consists of a set of local wordpress database credentials (**must be changed for the security reasons**).
+- [`main.yml`](./ansible/roles/ansiblewordpress/vars/main.yml) - consists of a set of local wordpress database credentials (**must be changed for the security reasons**).
 ## Terraform Configuration Files
 
 ### `providers.tf`

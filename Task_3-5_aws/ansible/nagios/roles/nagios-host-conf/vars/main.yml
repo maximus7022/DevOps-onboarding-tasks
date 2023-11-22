@@ -1,0 +1,2 @@
+docker_host_ip: "your ip" # will be set by terraform
+wordpress_host_ip: "your ip" # will be set by terraform

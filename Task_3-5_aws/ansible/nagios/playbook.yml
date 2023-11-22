@@ -1,0 +1,7 @@
+---
+- hosts: nagios                   # host, defined in inventory.txt
+  remote_user: ubuntu             # remote user to login with
+  become: yes                     # become root
+  roles:
+    - roles/nagios                # role, that installs nagios core
+    - roles/nagios-host-conf      # role, that configures remote hosts to monitor

@@ -1,0 +1,54 @@
+---
+- name: Install prerequisites
+  apt: name=aptitude update_cache=yes state=latest force_apt_get=yes
+
+- name: Install required system packages
+  apt:
+    pkg:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - software-properties-common
+      - python3-pip
+      - virtualenv
+      - python3-setuptools
+    state: latest
+    update_cache: true
+
+- name: Install LAMP Packages
+  apt: name={{ item }} update_cache=yes state=latest
+  with_items:
+    - gcc
+    - apache2
+    - mysql-server
+    - python3-pymysql
+    - php
+    - php-mysql
+    - libapache2-mod-php
+
+- name: Install PHP Extensions
+  apt: name={{ item }} update_cache=yes state=latest
+  with_items:
+    - php-curl
+    - php-gd
+    - php-mbstring
+    - php-xml
+    - php-xmlrpc
+    - php-soap
+    - php-intl
+    - php-zip
+
+- name: Installing and Configuring MariaDB and MariaDB-CLient For WordBress
+  include_tasks: database.yml
+
+- name: Installing and configuring httpd server for WordBress
+  include_tasks: webserver.yml
+
+- name: Downloading and configuring WORDPRESS
+  include_tasks: wordpress.yml
+
+- name: "UFW - Allow HTTP on port {{ http_port }}"
+  ufw:
+    rule: allow
+    port: "{{ http_port }}"
+    proto: tcp

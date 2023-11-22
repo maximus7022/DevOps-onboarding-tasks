@@ -1,0 +1,7 @@
+---
+- name: Configured allowed NRPE hosts
+  lineinfile:
+    path: /usr/local/nagios/etc/nrpe.cfg
+    regexp: "^allowed_hosts(.*)$"
+    line: "allowed_hosts=127.0.0.1,{{ nagios_ip }}"
+    backrefs: yes

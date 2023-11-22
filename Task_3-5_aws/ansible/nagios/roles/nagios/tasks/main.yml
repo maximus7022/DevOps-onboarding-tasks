@@ -1,0 +1,131 @@
+---
+- name: Install Nagios prerequisites for Ubuntu
+  apt: pkg={{ item }} state=present update_cache=true
+  with_items:
+    - python3-pip
+    - build-essential
+    - apache2
+    - php
+    - openssl
+    - perl
+    - php-gd
+    - libgd-dev
+    - libapache2-mod-php
+    - libperl-dev
+    - libssl-dev
+    - daemon
+    - autoconf
+    - libc6-dev
+    - libmcrypt-dev
+    - libnet-snmp-perl
+    - make
+    - wget
+    - gettext
+    - unzip
+
+- name: Install passlib
+  pip:
+    name: passlib
+
+- name: Create nagcmd group
+  group: name=nagcmd state=present
+
+- name: Create nagios user
+  user: name=nagios state=present groups=nagcmd
+
+- name: Add apache user to nagcmd group
+  user: name=apache state=present groups=nagcmd
+
+- name: GET Nagios
+  get_url: url=http://prdownloads.sourceforge.net/sourceforge/nagios/nagios-4.4.14.tar.gz dest=/tmp/nagios-4.4.14.tar.gz
+
+- name: Get Plugins
+  get_url: url=http://www.nagios-plugins.org/download/nagios-plugins-2.4.6.tar.gz dest=/tmp/nagios-plugins-2.4.6.tar.gz
+
+- name: Get NRPE
+  get_url: url=https://sourceforge.net/projects/nagios/files/nrpe-4.x/nrpe-4.0.3/nrpe-4.0.3.tar.gz dest=/tmp/nrpe-4.0.3.tar.gz validate_certs=false
+
+- name: Unpack Nagios source files
+  shell: cd /tmp && tar -xzvf nagios-4.4.14.tar.gz creates=/tmp/nagios-4.4.14
+
+- name: Configure
+  shell: cd /tmp/nagios-4.4.14 && ./configure --with-command-group=nagcmd --with-httpd-conf=/etc/apache2/sites-enabled creates=/tmp/nagios-4.4.14/Makefile
+
+- name: Make all
+  shell: cd /tmp/nagios-4.4.14 && make all creates=/tmp/nagios-4.4.14/base/nagios
+
+- name: Make install
+  shell: cd /tmp/nagios-4.4.14 && make install creates=/usr/local/nagios/bin/nagios
+
+- name: Make install-init
+  shell: cd /tmp/nagios-4.4.14 && make install-init creates=/etc/init.d/nagios
+
+- name: Make install-config
+  shell: cd /tmp/nagios-4.4.14 && make install-config creates=/usr/local/nagios/etc/nagios.cfg
+
+- name: Make install-commandmode
+  shell: cd /tmp/nagios-4.4.14 && make install-commandmode creates=/usr/local/nagios/var/rw
+
+- name: Make install-devel
+  shell: cd /tmp/nagios-4.4.14 && make install-devel creates=/usr/local/nagios/include/nagios/nagios.h
+
+- name: Make install-webconf
+  shell: cd /tmp/nagios-4.4.14 && make install-webconf creates=/etc/apache2/sites-enabled/nagios.conf
+
+- name: Configure apache
+  shell: a2enmod rewrite && a2enmod cgi
+  notify: restart apache
+
+- name: Set htpasswd for nagiosadmin
+  htpasswd: path=/usr/local/nagios/etc/htpasswd.users name=nagiosadmin password=Passw0rd! state=present
+
+- name: Unpack Plugin source files
+  shell: cd /tmp && tar -xzvf nagios-plugins-2.4.6.tar.gz creates=/tmp/nagios-plugins-2.4.6
+
+- name: Configure Plugins
+  shell: cd /tmp/nagios-plugins-2.4.6 && ./configure --with-nagios-user=nagios --with-nagios-group=nagios --with-openssl creates=/tmp/nagios-plugins-2.4.6/Makefile
+
+- name: Make Plugins
+  shell: cd /tmp/nagios-plugins-2.4.6 && make creates=/tmp/nagios-plugins-2.4.6/plugins/check_ping
+
+- name: Make Install Plugins
+  shell: cd /tmp/nagios-plugins-2.4.6 && make install creates=/usr/local/nagios/libexec/check_ping
+
+- name: Unpack NRPE source files
+  shell: cd /tmp && tar -xzvf nrpe-4.0.3.tar.gz creates=/tmp/nrpe-4.0.3
+
+- name: Configure NRPE
+  shell: cd /tmp/nrpe-4.0.3 && ./configure --disable-ssl creates=/tmp/nrpe-4.0.3/Makefile
+
+- name: Make NRPE
+  shell: cd /tmp/nrpe-4.0.3 && make all creates=/tmp/nrpe-4.0.3/src/check_nrpe
+
+- name: Copy check_nrpe
+  shell: cp /tmp/nrpe-4.0.3/src/check_nrpe /usr/local/nagios/libexec/check_nrpe creates=/usr/local/nagios/libexec/check_nrpe
+
+- name: Adding command definition
+  blockinfile:
+    dest: /usr/local/nagios/etc/objects/commands.cfg
+    content: "define command {\n
+      command_name check_nrpe\n
+      command_line $USER1$/check_nrpe -H $HOSTADDRESS$ -c $ARG1$\n
+      }"
+
+- name: Make plugins
+  shell: cd /tmp/nrpe-4.0.3 && make install-plugin
+
+- name: Make daemon
+  shell: cd /tmp/nrpe-4.0.3 && make install-daemon
+
+- name: Make init
+  shell: cd /tmp/nrpe-4.0.3 && make install-init
+
+- name: Changing owner of rw
+  shell: chown nagios:nagcmd /usr/local/nagios/var/rw
+
+- name: Adding user www-data to groups
+  shell: usermod -a -G nagios,nagcmd www-data
+
+- name: Ensure Nagios is started
+  service: name=nagios state=started enabled=yes
+  notify: restart apache

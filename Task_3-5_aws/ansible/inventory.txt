@@ -1,0 +1,7 @@
+#==============WILL BE SET BY TERRAFORM==============
+[wordpress]
+"your wordpress ip" ansible_ssh_private_key_file="path to your key"
+[docker]
+"your docker ip" ansible_ssh_private_key_file="path to your key"
+[nagios]
+"your nagios ip" ansible_ssh_private_key_file="path to your key"

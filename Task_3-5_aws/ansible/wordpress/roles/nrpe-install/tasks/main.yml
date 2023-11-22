@@ -1,0 +1,60 @@
+---
+- name: Create nagios user
+  user: name=nagios state=present
+
+# downloading archives
+- name: Get Plugins
+  get_url: url=http://www.nagios-plugins.org/download/nagios-plugins-2.4.6.tar.gz dest=/tmp/nagios-plugins-2.4.6.tar.gz
+
+- name: Get NRPE
+  get_url: url=https://sourceforge.net/projects/nagios/files/nrpe-4.x/nrpe-4.0.3/nrpe-4.0.3.tar.gz dest=/tmp/nrpe-4.0.3.tar.gz validate_certs=false
+
+# installing plugins
+- name: Unpack Plugin source files
+  shell: cd /tmp && tar -xzvf nagios-plugins-2.4.6.tar.gz creates=/tmp/nagios-plugins-2.4.6
+
+- name: Configure Plugins
+  shell: cd /tmp/nagios-plugins-2.4.6 && ./configure --with-nagios-user=nagios --with-nagios-group=nagios --with-openssl creates=/tmp/nagios-plugins-2.4.6/Makefile
+
+- name: Make Plugins
+  shell: cd /tmp/nagios-plugins-2.4.6 && make creates=/tmp/nagios-plugins-2.4.6/plugins/check_ping
+
+- name: Make Install Plugins
+  shell: cd /tmp/nagios-plugins-2.4.6 && make install creates=/usr/local/nagios/libexec/check_ping
+
+# installing nrpe
+- name: Unpack NRPE source files
+  shell: cd /tmp && tar -xzvf nrpe-4.0.3.tar.gz creates=/tmp/nrpe-4.0.3
+
+- name: Configure NRPE
+  shell: cd /tmp/nrpe-4.0.3 && ./configure --disable-ssl creates=/tmp/nrpe-4.0.3/Makefile
+
+- name: Make NRPE
+  shell: cd /tmp/nrpe-4.0.3 && make all creates=/tmp/nrpe-4.0.3/src/check_nrpe
+
+- name: Copy check_nrpe
+  shell: cp /tmp/nrpe-4.0.3/src/check_nrpe /usr/local/nagios/libexec/check_nrpe creates=/usr/local/nagios/libexec/check_nrpe
+
+- name: Make plugins
+  shell: cd /tmp/nrpe-4.0.3 && make install-plugin
+
+- name: Make daemon
+  shell: cd /tmp/nrpe-4.0.3 && make install-daemon
+
+- name: Make config
+  shell: cd /tmp/nrpe-4.0.3 && make install-config
+
+- name: Make init
+  shell: cd /tmp/nrpe-4.0.3 && make install-init
+
+- name: Configuring nagios server
+  include_tasks: set-monitor.yml
+
+- name: Ensure NRPE is started
+  service: name=nrpe state=started enabled=yes
+
+- name: "UFW - Open NRPE port"
+  ufw:
+    rule: allow
+    port: 5666
+    proto: tcp

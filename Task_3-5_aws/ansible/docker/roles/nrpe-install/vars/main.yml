@@ -1,0 +1,1 @@
+nagios_ip: "your ip" # will be set by terraform

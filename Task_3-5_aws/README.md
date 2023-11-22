@@ -241,3 +241,4 @@ After successfull deployments you'll have:
 - Ubuntu instance with Docker and running Apache2 container on board, configured to be a target of monitoring
 - Ubuntu instance with WordPress, configured to be a target of monitoring as well
 - Nagios Core server, configured to monitor resources and services of Docker and Wordpress EC2 instances.
+---

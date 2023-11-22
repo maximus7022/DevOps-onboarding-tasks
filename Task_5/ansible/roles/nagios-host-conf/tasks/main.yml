@@ -1,0 +1,33 @@
+---
+- name: Create a new config file for each host
+  file: path=/usr/local/nagios/etc/objects/{{ item }}.cfg state=touch
+  with_items:
+    - docker
+    - wordpress
+
+- name: Define remote host in server config file
+  template: src={{ item }}.j2 dest=/usr/local/nagios/etc/objects/{{ item }}.cfg
+  with_items:
+    - docker
+    - wordpress
+
+- name: Ansible insert lineinfile
+  lineinfile: dest=/usr/local/nagios/etc/nagios.cfg line=cfg_file=/usr/local/nagios/etc/objects/{{ item }}.cfg create=yes
+  with_items:
+    - docker
+    - wordpress
+
+- name: HTTP check service modification
+  lineinfile:
+    path: /usr/local/nagios/etc/objects/commands.cfg
+    regexp: "^(.*)\\$USER1\\$\\/check_http(.*)$"
+    line: "    command_line    $USER1$/check_http -H $HOSTADDRESS$ -p $ARG1$"
+    backrefs: yes
+
+- name: Reloading daemon
+  command: systemctl daemon-reload
+
+- name: Reload Nagios
+  service: name=nagios state=reloaded
+  tags:
+    - create_host_config

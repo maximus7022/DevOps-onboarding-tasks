@@ -1,0 +1,15 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "centos/7"
+  config.vm.network "forwarded_port", guest: 80, host: 8082
+  config.vm.provider "virtualbox" do |vb|
+    vb.name = "nagios"
+    vb.cpus = 2
+    vb.memory = "1024"
+  end
+  config.vm.provision "ansible" do |ansible|
+    ansible.playbook = "./ansible/playbook.yml"
+  end
+end

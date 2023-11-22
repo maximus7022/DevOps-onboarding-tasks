@@ -2,6 +2,6 @@
 - hosts: all
   become: yes
   roles:
-    - roles/apache
-    - roles/nagios
-    - roles/nagios-host-conf
+    - roles/apache              # role, that installs apache httpd server
+    - roles/nagios              # role, that installs nagios core
+    - roles/nagios-host-conf    # role, that configures hosts to monitor

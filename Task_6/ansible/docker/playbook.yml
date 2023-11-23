@@ -1,0 +1,8 @@
+---
+- hosts: docker                     # host, defined in inventory.txt
+  remote_user: ubuntu               # remote user to login with
+  become: yes                       # become root
+  roles:
+    - roles/docker-install          # role, that installs docker on the machine
+    - roles/apache-container        # role, that creates and runs docker container with apache
+    - roles/node-exporter-install   # role, that installs and configures node_exporter

@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Values.deployment.name }}"
+  namespace: "{{ .Values.namespace }}"
+spec:
+  replicas: {{ .Values.deployment.replicas }}
+  selector:
+    matchLabels:
+      app: "{{ .Values.deployment.name }}"
+  template:
+    metadata:
+      name: "{{ .Values.deployment.name }}"
+      labels:
+        app: "{{ .Values.deployment.name }}"
+    spec:
+      containers:
+        - name: "{{ .Values.deployment.name }}"
+          image: "{{ .Values.deployment.container.image }}"
+          ports:
+            - name: "{{ .Values.deployment.name }}"
+              containerPort: {{ .Values.grafana.port }}
+          resources:
+            limits:
+              memory: {{ .Values.deployment.container.resources.limits.memory }}
+              cpu: {{ .Values.deployment.container.resources.limits.cpu }}
+            requests:
+              memory: {{ .Values.deployment.container.resources.requests.memory }}
+              cpu: {{ .Values.deployment.container.resources.requests.cpu }}
+          volumeMounts:
+            - mountPath: "{{ .Values.deployment.volumes.storageVolume.path }}"
+              name: "{{ .Values.deployment.volumes.storageVolume.name }}"
+            - mountPath: "{{ .Values.deployment.volumes.configVolume.path }}"
+              name: "{{ .Values.deployment.volumes.configVolume.name }}"
+              readOnly: false
+      volumes:
+        - name: "{{ .Values.deployment.volumes.storageVolume.name }}"
+          emptyDir: {}
+        - name: "{{ .Values.deployment.volumes.configVolume.name }}"
+          configMap:
+            defaultMode: 420
+            name: "{{ .Values.configMap.name }}"

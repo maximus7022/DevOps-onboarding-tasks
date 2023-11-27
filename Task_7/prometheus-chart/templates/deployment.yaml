@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Values.deployment.name }}"
+  namespace: "{{ .Values.namespace }}"
+  labels:
+    app: {{ .Values.deployment.app.name }}
+spec:
+  replicas: {{ .Values.deployment.replicas }}
+  selector:
+    matchLabels:
+      app: "{{ .Values.deployment.app.name }}"
+  template:
+    metadata:
+      labels:
+        app: "{{ .Values.deployment.app.name }}"
+    spec:
+      containers:
+        - name: "{{ .Values.deployment.container.name }}"
+          image: "{{ .Values.deployment.container.image }}"
+          args:
+            - "--storage.tsdb.retention.time=12h"
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus/"
+          ports:
+            - containerPort: {{ .Values.prometheus.port }}
+          resources:
+            requests:
+              cpu: {{ .Values.deployment.container.resources.requests.cpu }}
+              memory: {{ .Values.deployment.container.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.deployment.container.resources.limits.cpu }}
+              memory: {{ .Values.deployment.container.resources.limits.memory }}
+          volumeMounts:
+            - name: "{{ .Values.deployment.volumes.configVolume.name }}"
+              mountPath: "{{ .Values.deployment.volumes.configVolume.path }}"
+            - name: "{{ .Values.deployment.volumes.storageVolume.name }}"
+              mountPath: "{{ .Values.deployment.volumes.storageVolume.path }}"
+      volumes:
+        - name: "{{ .Values.deployment.volumes.configVolume.name }}"
+          configMap:
+            defaultMode: 420
+            name: "{{ .Values.configMap.name }}"
+        - name: "{{ .Values.deployment.volumes.storageVolume.name }}"
+          emptyDir: {}

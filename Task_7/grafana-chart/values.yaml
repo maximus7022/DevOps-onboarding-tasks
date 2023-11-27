@@ -1,0 +1,26 @@
+deployment:
+  name: "grafana"
+  replicas: 1
+  container:
+    image: "grafana/grafana:latest"
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "500M"
+      limits:
+        cpu: "1000m"
+        memory: "1Gi"
+  volumes:
+    configVolume:
+      name: "grafana-datasources"
+      path: "/etc/grafana/provisioning/datasources"
+    storageVolume:
+      name: "grafana-storage"
+      path: "/var/lib/grafana"
+
+service:
+  name: "grafana"
+  nodePort: 32000
+
+configMap:
+  name: "grafana-datasources"

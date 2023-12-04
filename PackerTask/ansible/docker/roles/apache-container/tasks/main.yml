@@ -1,0 +1,9 @@
+---
+- name: Run apache container
+  community.docker.docker_container:
+    name: apache-server
+    image: httpd:latest
+    pull: true
+    state: started
+    ports:
+      - "80:80"

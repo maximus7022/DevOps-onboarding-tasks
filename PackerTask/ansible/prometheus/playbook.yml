@@ -1,0 +1,9 @@
+---
+- hosts: default
+  become: yes                         # sudo
+  roles:
+    - roles/prom-install              # role, that installs prometheus
+    - roles/node-exporter-install     # role, that installs node_exporter
+    - roles/grafana-install           # role, that installs grafana
+
+# node_exporter public dashboard --> 1860

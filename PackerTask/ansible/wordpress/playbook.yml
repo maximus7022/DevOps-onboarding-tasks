@@ -1,0 +1,6 @@
+---
+- hosts: default
+  become: yes                             # become root
+  roles:
+    - roles/ansiblewordpress              # role, that installs and configures wordpress
+    - roles/node-exporter-install         # role, that installs and configures node_exporter

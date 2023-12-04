@@ -1,0 +1,35 @@
+---
+- name: Creating prometheus user
+  user: name=prometheus state=present
+
+- name: Get Prometheus
+  get_url:
+    url: https://github.com/prometheus/prometheus/releases/download/v2.48.0/prometheus-2.48.0.linux-amd64.tar.gz
+    dest: /tmp/prometheus-2.48.0.linux-amd64.tar.gz
+
+- name: Unpack Prometheus
+  shell: cd /tmp && tar -xvf prometheus-2.48.0.linux-amd64.tar.gz creates=/tmp/prometheus-2.48.0.linux-amd64
+
+- name: Creating needed directories
+  file: path={{ item }} state=directory
+  with_items:
+    - /data
+    - /etc/prometheus
+
+- name: Moving prom binaries
+  shell: cd /tmp/prometheus-2.48.0.linux-amd64 && mv prometheus promtool /usr/local/bin creates=/usr/local/bin/prometheus
+
+- name: Moving console libs
+  shell: cd /tmp/prometheus-2.48.0.linux-amd64 && mv consoles/ console_libraries/ /etc/prometheus/ creates=/etc/prometheus/consoles
+
+- name: Moving main prometheus configuration file
+  template: src=prom-config.j2 dest=/etc/prometheus/prometheus.yml
+
+- name: Changing ownership of prom files
+  shell: chown -R prometheus:prometheus /etc/prometheus/ /data/
+
+- name: Creating prometheus service file from template
+  template: src=prom-service.j2 dest=/etc/systemd/system/prometheus.service
+
+- name: Starting Prometheus
+  service: name=prometheus state=started enabled=yes

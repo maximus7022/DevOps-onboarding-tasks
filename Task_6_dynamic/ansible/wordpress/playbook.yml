@@ -1,0 +1,7 @@
+---
+- hosts: tag_Name_target_wordpress        # host, defined in dynamic inventory
+  remote_user: ubuntu                     # remote user to login with
+  become: yes                             # become root
+  roles:
+    - roles/ansiblewordpress              # role, that installs and configures wordpress
+    - roles/node-exporter-install         # role, that installs and configures node_exporter

@@ -1,0 +1,53 @@
+---
+- name: Creating alertmanager user
+  user: name=alertmanager state=present
+
+- name: Get Alertmanager
+  get_url:
+    url: https://github.com/prometheus/alertmanager/releases/download/v0.26.0/alertmanager-0.26.0.linux-amd64.tar.gz
+    dest: /tmp/alertmanager-0.26.0.linux-amd64.tar.gz
+
+- name: Unpack Alertmanager
+  shell: cd /tmp && tar -xvf alertmanager-0.26.0.linux-amd64.tar.gz creates=/tmp/alertmanager-0.26.0.linux-amd64
+
+- name: Moving binary
+  shell: cd /tmp/alertmanager-0.26.0.linux-amd64 && mv alertmanager /usr/local/bin creates=/usr/local/bin/alertmanager
+
+- name: Changing binary ownership
+  shell: chown alertmanager:alertmanager /usr/local/bin/alertmanager
+
+- name: Creating Alertmanager directories
+  file: path={{ item }} state=directory
+  with_items:
+    - /etc/alertmanager
+    - /var/lib/alertmanager
+    - /etc/amtool
+
+- name: Creating alertmanager config file from template
+  template: src=alert-config.j2 dest=/etc/alertmanager/alertmanager.yml
+
+- name: Changing alertmanager dir ownership
+  shell: chown -R alertmanager:alertmanager /etc/alertmanager
+
+- name: Changing alertmanager /var/lib ownership
+  shell: chown alertmanager:alertmanager /var/lib/alertmanager
+
+- name: Creating alertmanager service file from template
+  template: src=alert-service.j2 dest=/etc/systemd/system/alertmanager.service
+
+- name: Starting Alertmanager
+  service: name=alertmanager state=started enabled=yes
+
+- name: Moving amtool
+  shell: cd /tmp/alertmanager-0.26.0.linux-amd64 && mv amtool /usr/local/bin creates=/usr/local/bin/amtool
+
+- name: Creating amtool config
+  copy:
+    dest: /etc/amtool/config.yml
+    content: 'alertmanager.url: http://localhost:9093'
+
+- name: Creating alert rule
+  template: src=alert.j2 dest=/etc/prometheus/alerts.yml
+
+- name: Restarting Prometheus
+  service: name=prometheus state=restarted

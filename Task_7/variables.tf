@@ -11,5 +11,5 @@ variable "prometheus_port" {
 }
 
 variable "target_ec2_tags" {
-  default = ["docker", "wordpress"]
+  default = ["target-docker", "target-wordpress"]
 }

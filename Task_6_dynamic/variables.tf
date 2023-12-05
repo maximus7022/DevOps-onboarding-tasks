@@ -25,7 +25,7 @@ variable "target_sg_port_list" {
 }
 
 variable "prom_sg_port_list" {
-  default = [22, 9090, 3000]
+  default = [22, 9090, 9093, 3000]
 }
 
 # ===========IAM vars===========

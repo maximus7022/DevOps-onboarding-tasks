@@ -6,5 +6,6 @@
     - roles/prom-install              # role, that installs prometheus
     - roles/node-exporter-install     # role, that installs node_exporter
     - roles/grafana-install           # role, that installs grafana
+    - roles/alert-manager-install     # role, that installs alertmanager
 
 # node_exporter public dashboard --> 1860

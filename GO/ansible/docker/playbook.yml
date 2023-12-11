@@ -1,0 +1,7 @@
+---
+- hosts: tag_Name_target_docker           # host, defined in dynamic inventory
+  remote_user: ubuntu                     # remote user to login with
+  become: yes                             # become root
+  roles:
+    - roles/docker-install                # role, that installs docker on the machine
+    - roles/go-app-container              # role, that creates and runs docker container with go application

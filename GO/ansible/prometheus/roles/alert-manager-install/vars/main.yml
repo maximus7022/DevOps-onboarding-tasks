@@ -1,0 +1,7 @@
+bot_token: >-
+  {{ 
+    (lookup(
+      'amazon.aws.aws_secret', 
+      'ansible/task6/bot_token'
+    ) | from_json).bot_token
+  }}

@@ -85,7 +85,27 @@ GO
 ├── security.tf
 └── variables.tf
 ```
-- [**`server`**](./server) folder contains actual `go application`, `static website files` (to serve) and `Dockerfile` (to build an image and transfer it to EC2 instance with Docker under the hood).
+- [**`server`**](./server) folder contains actual `go application`, `static website files` (to serve) and `Dockerfile` (to build an image and transfer it to EC2 instance with Docker under the hood). Dockerfile is as follows:
+```Dockerfile
+  # build stage
+  FROM golang:1.21.5-alpine AS builder
+
+  WORKDIR /app
+
+  COPY go.mod go.sum ./
+  COPY main.go ./
+
+  RUN go build -o /go-app
+
+  # run stage
+  FROM alpine:latest
+
+  COPY --from=builder /go-app /go-app
+  COPY web ./web/
+
+  EXPOSE 8080
+  CMD [ "/go-app" ]
+```
 - [**`ansible`**](./ansible) folder consists of two Ansible playbooks (one for `Docker instance with golang app container` and another one for `Prometheus monitoring server`).
 - **`keys`** folder is not included to version control. It contains a single `SSH key`, that is used by Ansible to connect to EC2 instances.
 - **`root folder`** contains `terraform configuration files` for infrastructure provisioning.

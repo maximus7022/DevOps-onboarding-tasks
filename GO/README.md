@@ -144,6 +144,7 @@ Image pulling is defined as part of ansible playbook:
     state: started
     ports:
       - "80:8080"
+      - "9200:9200"
 ```
 
 To provide your Ansible server with all needed AWS permissions you'll need:
@@ -206,6 +207,56 @@ resource "aws_instance" "ec2_prometheus" {
 }
 ```
 Same for Docker instance (**`AmazonEC2ContainerRegistryReadOnly`**) to make it able to pull ECR image.
+
+## Separate port for metrics exposure
+To restrict access to the `/metrics` endpoint of our Golang server to the Prometheus machine only, the following was considered:
+- separate ingress rules in docker SG, to ensure access on ports only from prometheus SG:
+```hcl
+  dynamic "ingress" {
+    for_each = var.metrics_sg_port_list
+    content {
+      from_port       = ingress.value
+      to_port         = ingress.value
+      protocol        = "tcp"
+      security_groups = [aws_security_group.ec2_prom_sg.id]
+    }
+  }
+```
+- separating /metrics endpoint and listener in Golang code:
+```go
+  func main() {
+    // Creating a separate router for metrics endpoint
+    metricsMux := http.NewServeMux()
+    metricsMux.HandleFunc("/metrics", promhttp.Handler().ServeHTTP)
+
+    // Create a listener for metrics endpoint
+    metricsMuxListener, err := net.Listen("tcp", ":9200")
+    if err != nil {
+      loggerFTL.Fatalf("Failed to listen on port 9200 for metrics: %s", err)
+    }
+
+    // Ensuring gracefull listener shutdown
+    defer metricsMuxListener.Close()
+
+    // Serving metrics endpoint as a separate goroutine
+    go func() {
+      if err := http.Serve(metricsMuxListener, metricsMux); err != nil {
+        loggerFTL.Fatalf("Failed to serve metrics on port 9200: %s", err)
+      }
+    }()
+    loggerINF.Println("Successfully exposed metrics on :9200")
+
+    // Handling root path with the handler function
+    http.HandleFunc("/", handler)
+
+    // Starting the HTTP server on port :8080
+    loggerINF.Println("Starting server on :8080")
+    if err := http.ListenAndServe(":8080", nil); err != nil {
+      loggerFTL.Fatalf("Failed to start server: %s", err)
+    }
+  }
+```
+After these modifications **only Prometheus server can scrape metrics from our Golang server**.
 
 ## Applying the configuration
 To apply all configuration you need to provicion EC2 instances with terraform. Run:

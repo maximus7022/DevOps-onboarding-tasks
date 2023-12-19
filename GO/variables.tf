@@ -18,7 +18,11 @@ variable "prom_ec2_name" {
 
 # ===========Allowed port lists===========
 variable "docker_sg_port_list" {
-  default = [22, 80, 9100]
+  default = [22, 80]
+}
+
+variable "metrics_sg_port_list" {
+  default = [9100, 9200]
 }
 
 variable "prom_sg_port_list" {

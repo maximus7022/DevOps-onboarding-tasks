@@ -1,0 +1,7 @@
+ecr_repo: >-
+  {{ 
+    (lookup(
+      'amazon.aws.aws_secret', 
+      'ansible/go/ecr_repo'
+    ) | from_json).before_slash
+  }}

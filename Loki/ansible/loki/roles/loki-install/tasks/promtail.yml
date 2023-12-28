@@ -1,0 +1,29 @@
+---
+- name: Get Promtail
+  get_url:
+    url: https://github.com/grafana/loki/releases/download/v2.8.7/promtail-linux-amd64.zip
+    dest: /tmp/promtail-linux-amd64.zip
+  
+- name: Unpack Loki
+  shell: cd /tmp && unzip promtail-linux-amd64.zip creates=/tmp/promtail-linux-amd64
+
+- name: Adding execute permission
+  shell: cd /tmp && chmod a+x promtail-linux-amd64
+
+- name:  Moving binary
+  shell: cd /tmp && cp promtail-linux-amd64 /usr/local/bin/promtail creates=/usr/local/bin/promtail
+
+- name: Creating Promtail directories
+  file: path={{ item }} state=directory
+  with_items:
+    - /etc/promtail
+    - /etc/promtail/logs
+
+- name: Creating promtail config file from template
+  template: src=promtail-config.j2 dest=/etc/promtail/promtail-config.yaml
+
+- name: Creating promtail service file from template
+  template: src=promtail-service.j2 dest=/etc/systemd/system/promtail.service
+
+- name: Starting Promtail
+  service: name=promtail state=started enabled=yes

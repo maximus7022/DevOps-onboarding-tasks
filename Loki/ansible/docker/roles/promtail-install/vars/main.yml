@@ -1,0 +1,7 @@
+loki_client_address: >-
+  {{ 
+    (lookup(
+      'amazon.aws.aws_ssm', 
+      'LokiClientAddress')
+    )
+  }}

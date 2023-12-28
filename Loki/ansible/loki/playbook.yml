@@ -1,0 +1,7 @@
+---
+- hosts: tag_Name_grafana_loki          # host from dynamic inventory
+  remote_user: ubuntu                   # target machine username
+  become: yes                           # sudo
+  roles:
+    - roles/loki-install                # role, that installs loki
+    - roles/grafana-install             # role, that installs grafana

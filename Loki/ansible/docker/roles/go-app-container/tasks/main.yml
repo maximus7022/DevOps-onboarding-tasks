@@ -1,0 +1,16 @@
+---
+- name: Amazon ECR Login
+  shell: aws ecr get-login-password --region eu-north-1 | docker login --username AWS --password-stdin {{ ecr_repo }}
+
+- name: Run GO container
+  community.docker.docker_container:
+    name: go-app
+    image: "{{ ecr_repo }}/go-app:latest"
+    pull: true
+    state: started
+    ports:
+      - "80:8080"
+      - "9200:9200"
+    labels:
+      logging: "promtail"
+      logging_jobname: "remote_dockerlogs"

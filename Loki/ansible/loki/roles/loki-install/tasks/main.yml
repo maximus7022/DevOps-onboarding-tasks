@@ -1,0 +1,41 @@
+---
+- name: Installing dependencies
+  apt: pkg=unzip state=latest update_cache=true
+
+- name: Creating loki user
+  user: name=loki state=present
+
+- name: Get Loki
+  get_url:
+    url: https://github.com/grafana/loki/releases/download/v2.8.7/loki-linux-amd64.zip
+    dest: /tmp/loki-linux-amd64.zip
+  
+- name: Unpack Loki
+  shell: cd /tmp && unzip loki-linux-amd64.zip creates=/tmp/loki-linux-amd64
+
+- name: Adding execute permission
+  shell: cd /tmp && chmod a+x loki-linux-amd64
+
+- name:  Moving binary
+  shell: cd /tmp && cp loki-linux-amd64 /usr/local/bin/loki creates=/usr/local/bin/loki
+
+- name: Creating Loki directories
+  file: path={{ item }} state=directory
+  with_items:
+    - /etc/loki
+    - /etc/loki/logs
+
+- name: Creating loki config file from template
+  template: src=loki-config.j2 dest=/etc/loki/loki-local-config.yaml
+
+- name: Changing loki dir ownership
+  shell: chown -R loki:loki /etc/loki
+
+- name: Creating loki service file from template
+  template: src=loki-service.j2 dest=/etc/systemd/system/loki.service
+
+- name: Starting Loki
+  service: name=loki state=started enabled=yes
+
+- name: Promtail
+  include_tasks: promtail.yml

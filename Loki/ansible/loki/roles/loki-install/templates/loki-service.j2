@@ -1,0 +1,15 @@
+[Unit] 
+Description=Loki service 
+After=network.target 
+
+[Service] 
+Type=simple 
+User=loki 
+ExecStart=/usr/local/bin/loki -config.file /etc/loki/loki-local-config.yaml 
+Restart=on-failure 
+RestartSec=20 
+StandardOutput=append:/etc/loki/logs/loki.log 
+StandardError=append:/etc/loki/logs/loki.log 
+
+[Install] 
+WantedBy=multi-user.target

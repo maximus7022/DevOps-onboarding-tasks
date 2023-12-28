@@ -25,6 +25,7 @@ Your keys (`key-name.pem`) will be automatically downloaded on your PC after cre
 ## Project architecture overview
 The resulting architecture of the project is as follows:
 ![architecture](./img/arch.png)
+
 As you can see, two AWS EC2 instances are used for logging purposes. One of them is the target where the application whose logs we need to collect is running, and the other is the log collector and visualizer.
 
 ## Steps to reproduce
@@ -347,3 +348,4 @@ As a result, we have configured log collection with `Promtail` and `Grafana Loki
 
 We can see a visible result on the Grafana Dashboard as follows:
 ![result](./img/result.png)
+---

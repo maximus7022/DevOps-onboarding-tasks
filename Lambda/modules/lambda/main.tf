@@ -1,24 +1,11 @@
-resource "aws_iam_role" "lambda_role" {
-  name               = var.role_name
-  assume_role_policy = data.aws_iam_policy_document.lambda_assume_role_policy.json
-}
-
-resource "aws_iam_role_policy_attachment" "ec2_policy_atachment" {
-  role       = aws_iam_role.lambda_role.name
-  policy_arn = data.aws_iam_policy.EC2ReadOnly.arn
-}
-
-resource "aws_iam_role_policy_attachment" "s3_policy_atachment" {
-  role       = aws_iam_role.lambda_role.name
-  policy_arn = data.aws_iam_policy.S3FullAccess.arn
-}
-
+# \\\\\\\\\Packing function source code in archive//////////
 data "archive_file" "func" {
   type        = "zip"
   source_file = "source/lambda_function.py"
   output_path = "source/lambda_function.zip"
 }
 
+# \\\\\\\\\\Lambda function creation//////////
 resource "aws_lambda_function" "lambda" {
   filename         = "source/lambda_function.zip"
   function_name    = var.lambda_func_name
@@ -33,4 +20,10 @@ resource "aws_lambda_function" "lambda" {
       BUCKET = var.s3_bucket
     }
   }
+}
+
+# \\\\\\\\\\Adding function URL//////////
+resource "aws_lambda_function_url" "lambda_url" {
+  function_name      = aws_lambda_function.lambda.function_name
+  authorization_type = "AWS_IAM"
 }

@@ -1,4 +1,5 @@
 import os
+import time
 import json
 import boto3
 
@@ -6,6 +7,7 @@ def lambda_handler(event, context):
     ec2_client = boto3.client('ec2')
     s3_client = boto3.client('s3')
     
+    # EC2 information gathering
     reservations = ec2_client.describe_instances()['Reservations']
     records = []
     
@@ -25,9 +27,10 @@ def lambda_handler(event, context):
             })
         records.append(instance_info)
     
+    # pushing gathered info to S3 bucket
     json_output = json.dumps(records, indent=4)
     bucket_name = os.environ["BUCKET"]
-    file_name = 'instance_data.json'
+    file_name = 'instance_data' + time.strftime("%Y%m%d-%H%M%S") + '.json'
     s3_client.put_object(Body=json_output, Bucket=bucket_name, Key=file_name)
     print(f"JSON data sent to S3 bucket: {bucket_name}/{file_name}")
     return records

@@ -30,7 +30,7 @@ def lambda_handler(event, context):
     # pushing gathered info to S3 bucket
     json_output = json.dumps(records, indent=4)
     bucket_name = os.environ["BUCKET"]
-    file_name = 'instance_data' + time.strftime("%Y%m%d-%H%M%S") + '.json'
+    file_name = 'instance_data.json'
     s3_client.put_object(Body=json_output, Bucket=bucket_name, Key=file_name)
     print(f"JSON data sent to S3 bucket: {bucket_name}/{file_name}")
     return records

@@ -1,0 +1,52 @@
+---
+- name: Installing dependencies
+  apt: pkg={{ item }} state=latest update_cache=true
+  with_items:
+    - apt-transport-https
+    - software-properties-common
+    - python3-pip
+    - awscli
+    - apache2
+    - jq
+
+- name: Updating AWS CLI
+  shell: pip install awscli --upgrade --user
+
+- name: Adding Grafana GPG key
+  apt_key:
+    url: https://packages.grafana.com/gpg.key
+    state: present
+
+- name: Adding Grafana repo to stable
+  shell: echo "deb https://packages.grafana.com/oss/deb stable main" | tee -a /etc/apt/sources.list.d/grafana.list
+
+- name: Update + Install Grafana
+  apt: update_cache=true pkg=grafana state=latest
+
+- name: Installing JSON API Plugin
+  shell: grafana-cli plugins install marcusolsson-json-datasource
+
+- name: Defining datasources
+  template: src=data-source.j2 dest=/etc/grafana/provisioning/datasources/datasources.yaml
+
+- name: Copying Dashboard to grafana server
+  copy: 
+    src: dashboard.json
+    dest: /var/lib/grafana/dashboards/
+    owner: grafana
+    group: grafana
+    mode: 0644
+
+- name: Copying dashboard provisioning config file
+  template: src=provisioning.j2 dest=/etc/grafana/provisioning/dashboards/sample.yaml
+
+- name: Grafana configuration for provisioning
+  lineinfile:
+    path: /etc/grafana/grafana.ini
+    line: |
+      [provisioning]
+      enabled = true
+      provisioning_path = /etc/grafana/provisioning
+
+- name: Starting Grafana
+  service: name=grafana-server state=started enabled=yes

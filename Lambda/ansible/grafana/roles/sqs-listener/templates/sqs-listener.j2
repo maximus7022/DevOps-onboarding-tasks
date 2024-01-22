@@ -1,0 +1,21 @@
+#!/bin/bash
+
+function handle_sqs_notification() {
+  FILE_KEY=$(jq -r '.Messages[].Body | fromjson | .Records[].s3.object.key' <<< $1)
+  if [ ! $? -eq 0 ]; then
+    return 1
+  fi
+  sudo aws s3 cp s3://{{ s3_bucket_name }}/$FILE_KEY /var/www/html/$FILE_KEY
+}
+
+while true; do
+  sqs_message=$(aws sqs receive-message --queue-url {{ sqs_queue_url }} --region {{ region }} --wait-time-seconds 20)
+  receipt_handle=$(jq -r '.Messages[].ReceiptHandle' <<< $sqs_message)
+
+  if [[ $sqs_message ]]; then
+    handle_sqs_notification "$sqs_message"
+    if [ $? -eq 0 ]; then
+      sudo aws sqs delete-message --receipt-handle $receipt_handle --queue-url {{ sqs_queue_url }} --region {{ region }}
+    fi
+  fi
+done

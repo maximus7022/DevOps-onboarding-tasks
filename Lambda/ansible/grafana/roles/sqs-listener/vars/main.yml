@@ -1,0 +1,17 @@
+s3_bucket_name: >-
+  {{ 
+    (lookup(
+      'amazon.aws.aws_secret', 
+      'ansible/lambda/s3_bucket_name'
+    ) | from_json).s3_bucket_name
+  }}
+
+sqs_queue_url: >-
+  {{ 
+    (lookup(
+      'amazon.aws.aws_secret', 
+      'ansible/lambda/sqs_queue_url'
+    ) | from_json).sqs_queue_url
+  }}
+
+region: eu-north-1

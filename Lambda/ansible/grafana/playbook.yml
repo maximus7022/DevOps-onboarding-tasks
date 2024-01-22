@@ -1,0 +1,7 @@
+---
+- hosts: tag_Name_grafana               # host from dynamic inventory
+  remote_user: ubuntu                   # target machine username
+  become: yes                           # sudo
+  roles:
+    - roles/grafana-install             # role, that installs grafana
+    - roles/sqs-listener                # role, that launches script

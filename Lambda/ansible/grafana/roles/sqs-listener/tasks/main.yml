@@ -1,0 +1,9 @@
+---
+- name: Copying script in the filesystem
+  template: src=sqs-listener.j2 dest=/tmp/sqs-listener.sh
+
+- name: Adding permission to execute
+  shell: chmod +x /tmp/sqs-listener.sh
+
+- name: Background script execution
+  shell: cd /tmp && nohup ./sqs-listener.sh > /dev/null 2>&1 &

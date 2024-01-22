@@ -30,3 +30,5 @@ keys/
 
 # Ignored vscode files
 .vscode/
+
+test/

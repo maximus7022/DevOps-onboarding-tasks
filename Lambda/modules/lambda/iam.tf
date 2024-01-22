@@ -25,7 +25,7 @@ resource "aws_iam_role_policy_attachment" "ec2_policy_atachment" {
   policy_arn = data.aws_iam_policy.EC2ReadOnly.arn
 }
 
-# \\\\\\\\\\Ensuring S3 object upload only permission//////////
+# \\\\\\\\\\Ensuring S3 object upload permission//////////
 data "aws_iam_policy_document" "S3PutOnly_document" {
   statement {
     effect = "Allow"
@@ -47,4 +47,29 @@ resource "aws_iam_policy" "S3PutOnly" {
 resource "aws_iam_role_policy_attachment" "s3_policy_atachment" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = aws_iam_policy.S3PutOnly.arn
+}
+
+# \\\\\\\\\\Ensuring Cloudwatch permissions//////////
+data "aws_iam_policy_document" "cloudwatch_document" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "cloudwatch:PutMetricData",
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "cloudwatch_policy" {
+  name        = "AmazonCloudwatchLambdaAccess"
+  description = "Policy allowing Lambda to interact with Cloudwatch"
+  policy      = data.aws_iam_policy_document.cloudwatch_document.json
+}
+
+resource "aws_iam_role_policy_attachment" "cloudwatch_policy_atachment" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = aws_iam_policy.cloudwatch_policy.arn
 }

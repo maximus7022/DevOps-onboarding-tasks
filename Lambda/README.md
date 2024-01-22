@@ -1,6 +1,6 @@
 
 ---
-# Performing Amazon EC2 health-checks with a Lambda function provisioned by Terraform
+# Performing Amazon EC2 health-checks with a Lambda function provisioned by Terraform [deprecated]
 
 ## Overview
 This documentation outlines the process of `provisioning Amazon Lambda function, that will perform basic health-checks and gather information about EC2 instances`.

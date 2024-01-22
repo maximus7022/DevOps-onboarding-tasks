@@ -22,8 +22,23 @@ resource "aws_lambda_function" "lambda" {
   }
 }
 
-# \\\\\\\\\\Adding function URL//////////
-resource "aws_lambda_function_url" "lambda_url" {
-  function_name      = aws_lambda_function.lambda.function_name
-  authorization_type = "AWS_IAM"
+# \\\\\\\\\\Cloudwatch Events auto trigger every 1 minute//////////
+resource "aws_cloudwatch_event_rule" "event_rule" {
+  name                = "lambda-trigger"
+  description         = "Fires every 1 minute"
+  schedule_expression = "rate(1 minute)"
+}
+
+resource "aws_cloudwatch_event_target" "event_target" {
+  rule      = aws_cloudwatch_event_rule.event_rule.name
+  target_id = aws_lambda_function.lambda.id
+  arn       = aws_lambda_function.lambda.arn
+}
+
+resource "aws_lambda_permission" "cloudwatch_permission" {
+  statement_id  = "AllowExecutionFromCloudWatch"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.lambda.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.event_rule.arn
 }

@@ -1,14 +1,23 @@
 
 ---
-# Performing Amazon EC2 health-checks with a Lambda function provisioned by Terraform [deprecated]
+# Performing Amazon EC2 health-checks with a Lambda function provisioned by Terraform
 
 ## Overview
-This documentation outlines the process of `provisioning Amazon Lambda function, that will perform basic health-checks and gather information about EC2 instances`.
+`The goal` of this project is to collect and to visualize information about **Amazon EC2 instances** on the **Grafana Dashboard**.
+
+`A Lambda function (Python)` has been developed to perform status checks on EC2 instances, which collects all the necessary information and saves it in **JSON format** to an **S3 bucket**. Also, this function supports **logging in Cloudwatch** and creates a **custom metric**.
+
+`All AWS resources` being created with use of **Terraform**.
+
+Separate `EC2 instance with Grafana server` been provisioned with **Ansible**.
+
+To deliver `JSON data from the S3 bucket to Grafana`, it was decided to develop a simple **bash script** that will run in the background and **download data directly** from the bucket after **receiving a notification from the SQS queue** about a new object in the bucket.
 
 ## Prerequisites
 To reproduce this project in your own environment you'll need:
 - `AWS free tier account`
 - `Terraform` to provision AWS infrastructure
+- `Ansible` to deploy and configure Grafana on EC2
 
 To be able to provision AWS infrastructure with Terraform you'll need:
 - to create corresponding IAM user with administrative rights in AWS Management Console
@@ -20,178 +29,81 @@ To be able to provision AWS infrastructure with Terraform you'll need:
 First of all we need to develop the code that we want to run as Lambda function. As an example, we have [`such code`](./source/lambda_function.py):
 ```python
 import os
-import time
 import json
 import boto3
+import logging
+
+# aws clients
+ec2_client = boto3.client('ec2')
+s3_client = boto3.client('s3')
+cloudwatch_client = boto3.client('cloudwatch')
+
+# logger init
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
-    ec2_client = boto3.client('ec2')
-    s3_client = boto3.client('s3')
-    
     # EC2 information gathering
+    logger.info("Starting to collect information about EC2 instances...")
     reservations = ec2_client.describe_instances()['Reservations']
-    records = []
-    
+    instances_data = {"instances": []}
+    running_count = 0
     for reservation in reservations:
-      for instance in reservation['Instances']:
+      for index, instance in enumerate(reservation['Instances']):
         instance_info = {
-          "Instance Name": instance['Tags'][0]['Value'],
-          "Instance ID": instance['InstanceId'],
-          "Instance State": instance['State']['Name']
+          "name": instance['Tags'][0]['Value'],
+          "id": instance['InstanceId'],
+          "type": instance['InstanceType'],
+          "state": instance['State']['Name'],
+          "launch_time": instance['LaunchTime'].strftime("%Y-%m-%d %H:%M:%S")
         }
         if instance['State']['Name'] == 'running':
+          running_count += 1
           status_check_response = ec2_client.describe_instance_status(InstanceIds=[instance['InstanceId']])
           if 'InstanceStatuses' in status_check_response and len(status_check_response['InstanceStatuses']) > 0:
             instance_info.update({
-              "Instance status check": status_check_response['InstanceStatuses'][0]['InstanceStatus']['Details'][0]['Status'],
-              "System status check": status_check_response['InstanceStatuses'][0]['SystemStatus']['Details'][0]['Status']
+              "instance_status_check": status_check_response['InstanceStatuses'][0]['InstanceStatus']['Details'][0]['Status'],
+              "system_status_check": status_check_response['InstanceStatuses'][0]['SystemStatus']['Details'][0]['Status']
             })
-        records.append(instance_info)
+        else:
+          instance_info.update({
+              "instance_status_check": "not running",
+              "system_status_check": "not running"
+            })
+        instances_data["instances"].append(instance_info)
+        logger.info(f"Collected info about instance with ID: {instance['InstanceId']}")
+    logger.info("Finished EC2 instances collection.")
     
+    # putting cloudwatch custom metric (running instances)
+    logger.info(f"Exposing Cloudwatch custom metric...")
+    cloudwatch_client.put_metric_data(
+      Namespace='LambdaHealthCheckNamespace',
+      MetricData=[
+        {
+          'MetricName': 'running_instances',
+          'Value': running_count,
+          'Unit': 'Count'
+        },
+      ]
+    )
+    logger.info("Cloudwatch custom metric exposed successfully.")
+
     # pushing gathered info to S3 bucket
-    json_output = json.dumps(records, indent=4)
+    logger.info("Sending collected info to S3 bucket...")
+    json_output = json.dumps(instances_data, indent=4, default=str)
     bucket_name = os.environ["BUCKET"]
-    file_name = 'instance_data' + time.strftime("%Y%m%d-%H%M%S") + '.json'
+    file_name = 'instance_data.json'
     s3_client.put_object(Body=json_output, Bucket=bucket_name, Key=file_name)
-    print(f"JSON data sent to S3 bucket: {bucket_name}/{file_name}")
-    return records
+    logger.info(f"JSON data sent to S3 bucket: {bucket_name}/{file_name}")
+    return instances_data
 ```
 After execution, this code `collects information about all EC2's` in the region, converts the collected information `to JSON` and sends it to the `S3 bucket`.
 
 ### Terraform configuration
-Finally, we are ready to provision our `Lambda function`. For this purpose, two [`terraform modules`](./modules/) were used - one for `S3 bucket` creation, and another one for `Lambda`.
-
-**`S3 module contents`**
-- `main.tf`:
-```hcl
-  # \\\\\\\\\\S3 bucket creation//////////
-  resource "aws_s3_bucket" "s3" {
-    bucket        = var.bucket_name
-    force_destroy = true
-  }
-
-  # \\\\\\\\\\Adding bucket versioning//////////
-  resource "aws_s3_bucket_versioning" "s3_versioning" {
-    bucket = aws_s3_bucket.s3.id
-    versioning_configuration {
-      status = "Enabled"
-    }
-  }
-```
-- `variables.tf`:
-```hcl
-  variable "bucket_name" {
-    type = string
-  }
-```
-- `outputs.tf`:
-```hcl
-  # \\\\\\\\\\Sharing bucket name with Lambda module//////////
-  output "bucket_name" {
-    value = aws_s3_bucket.s3.bucket
-  }
-```
-
-**`Lambda module contents`**
-- `iam.tf`:
-```hcl
-  # \\\\\\\\\\Creating IAM Role, to provide Lambda function with specific permissions//////////
-  data "aws_iam_policy_document" "lambda_assume_role_policy" {
-    statement {
-      actions = ["sts:AssumeRole"]
-
-      principals {
-        type        = "Service"
-        identifiers = ["lambda.amazonaws.com"]
-      }
-    }
-  }
-
-  resource "aws_iam_role" "lambda_role" {
-    name               = var.role_name
-    assume_role_policy = data.aws_iam_policy_document.lambda_assume_role_policy.json
-  }
-
-  # \\\\\\\\\\Ensuring EC2 read only permission//////////
-  data "aws_iam_policy" "EC2ReadOnly" {
-    name = "AmazonEC2ReadOnlyAccess"
-  }
-
-  resource "aws_iam_role_policy_attachment" "ec2_policy_atachment" {
-    role       = aws_iam_role.lambda_role.name
-    policy_arn = data.aws_iam_policy.EC2ReadOnly.arn
-  }
-
-  # \\\\\\\\\\Ensuring S3 object upload only permission//////////
-  data "aws_iam_policy_document" "S3PutOnly_document" {
-    statement {
-      effect = "Allow"
-      actions = [
-        "s3:PutObject"
-      ]
-      resources = [
-        "arn:aws:s3:::${var.s3_bucket}/*"
-      ]
-    }
-  }
-
-  resource "aws_iam_policy" "S3PutOnly" {
-    name        = "AmazonS3PutOnlyAccess"
-    description = "Policy allowing only object uploads to S3 bucket"
-    policy      = data.aws_iam_policy_document.S3PutOnly_document.json
-  }
-
-  resource "aws_iam_role_policy_attachment" "s3_policy_atachment" {
-    role       = aws_iam_role.lambda_role.name
-    policy_arn = aws_iam_policy.S3PutOnly.arn
-  }
-```
-- `main.tf`:
-```hcl
-  # \\\\\\\\\Packing function source code in archive//////////
-  data "archive_file" "func" {
-    type        = "zip"
-    source_file = "source/lambda_function.py"
-    output_path = "source/lambda_function.zip"
-  }
-
-  # \\\\\\\\\\Lambda function creation//////////
-  resource "aws_lambda_function" "lambda" {
-    filename         = "source/lambda_function.zip"
-    function_name    = var.lambda_func_name
-    role             = aws_iam_role.lambda_role.arn
-    runtime          = "python3.10"
-    handler          = "lambda_function.lambda_handler"
-    source_code_hash = data.archive_file.func.output_base64sha256
-    timeout          = 10
-
-    environment {
-      variables = {
-        BUCKET = var.s3_bucket
-      }
-    }
-  }
-
-  # \\\\\\\\\\Adding function URL to trigger its execution//////////
-  resource "aws_lambda_function_url" "lambda_url" {
-    function_name      = aws_lambda_function.lambda.function_name
-    authorization_type = "AWS_IAM"
-  }
-```
-- `variables.tf`:
-```hcl
-  variable "role_name" {
-    type = string
-  }
-
-  variable "lambda_func_name" {
-    type = string
-  }
-
-  variable "s3_bucket" {
-    type = string
-  }
-```
+The following Terraform module structure been created for infrastructure provisioning:
+- [`s3 module`](./modules/s3/): creates **S3 bucket** with versioning, **SQS queue** and **bucket notification**.
+- [`lambda module`](./modules/lambda/): provisions **Lambda function**, configures all necessary **IAM permissions** and **automatic execution triggering**.
+- [`grafana module`](./modules/grafana/): creates **Grafana EC2 instance**, security group + IAM permissions.
 
 To apply above config you need to navigate to the [`root project directory`](./) and run such commands:
 ```bash
@@ -201,5 +113,58 @@ To apply above config you need to navigate to the [`root project directory`](./)
   terraform apply
 ```
 
+### Ansible
+To provision Grafana with all necessary configurations we need a corresponding playbook. [`Here`](./ansible/) it is:
+```yml
+  ---
+  - hosts: tag_Name_grafana               # host from dynamic inventory
+    remote_user: ubuntu                   # target machine username
+    become: yes                           # sudo
+    roles:
+      - roles/grafana-install             # role, that installs grafana
+      - roles/sqs-listener                # role, that launches script
+```
+It consists of two roles, one for Grafana server installation, datasource and dashboard pre-configuration, second one for bash script execution. 
+
+To run this playbook you need to navigate to the [`ansible`](./ansible/) directory after applying terraform config and simply run:
+```bash
+  ansible-playbook grafana/playbook.yml
+```
+
+### Receiving data from S3 bucket
+To deliver data to Grafana EC2 we have such daemon [`script`](./ansible/grafana/roles/sqs-listener/templates/sqs-listener.j2):
+```bash
+  #!/bin/bash
+
+  function handle_sqs_notification() {
+    FILE_KEY=$(jq -r '.Messages[].Body | fromjson | .Records[].s3.object.key' <<< $1)
+    if [ ! $? -eq 0 ]; then
+      return 1
+    fi
+    sudo aws s3 cp s3://{{ s3_bucket_name }}/$FILE_KEY /var/www/html/$FILE_KEY
+  }
+
+  while true; do
+    sqs_message=$(aws sqs receive-message --queue-url {{ sqs_queue_url }} --region {{ region }} --wait-time-seconds 20)
+    receipt_handle=$(jq -r '.Messages[].ReceiptHandle' <<< $sqs_message)
+
+    if [[ $sqs_message ]]; then
+      handle_sqs_notification "$sqs_message"
+      if [ $? -eq 0 ]; then
+        sudo aws sqs delete-message --receipt-handle $receipt_handle --queue-url {{ sqs_queue_url }} --region {{ region }}
+      fi
+    fi
+  done
+```
+It waits for a message about new object in S3 bucket from SQS queue and downloads data from bucket after receiving one. 
+
+Path for data downloads is set to ***/var/www/html*** because we need to serve our data on the local apache server in order to ensure access to it for Grafana ([**JSON API plugin**](https://grafana.com/grafana/plugins/marcusolsson-json-datasource/)). 
+
 ## Result
-As a result, we have `provisioned with Terraform Lambda function`, that collects info about our EC2 instances and `sends that info in JSON format to S3 bucket`.
+As a result, after applying all configs we have: 
+- `Lambda function`, that performs EC2 health-checks and sends data to S3 bucket.
+- `SQS queue`, that receive messages about new objects from S3 bucket.
+- `EC2 instance with Grafana Server`.
+- `bash background script`, that downloads data from S3 after receiving a message from SQS.
+- `Grafana dashboard` with visualized data.
+---
